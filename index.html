@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Chat Assistant</title>
+  <link rel="stylesheet" href="./libs/tailwind.min.css">
+  <script src="./libs/react.development.js"></script>
+  <script src="./libs/react-dom.development.js"></script>
+  <script src="./libs/babel.min.js"></script>
+  <style>
+    /* ── Reset ── */
+    *, body, html { margin:0; padding:0; box-sizing:border-box; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#374151; border-radius:10px; }
+
+    /* ── Typing cursor ── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .cursor { display:inline-block; width:2px; height:1em; background:currentColor;
+              margin-left:2px; animation:blink 1s infinite; vertical-align:middle; }
+
+    /* ── Skeleton loader ── */
+    @keyframes skelpulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
+    .skel { animation:skelpulse 1.2s infinite; border-radius:8px; }
+
+    /* ── Bot answer formatting ── */
+    .bot-answer { line-height:1.75; }
+    .bot-answer p  { margin-bottom:.55em; }
+    .bot-answer ol { list-style:decimal; padding-left:1.5em; margin-bottom:.6em; }
+    .bot-answer ul { list-style:disc;    padding-left:1.5em; margin-bottom:.6em; }
+    .bot-answer li { margin-bottom:.35em; }
+    .bot-answer strong { font-weight:700; }
+
+    /* ── Toggle switch ── */
+    .tog-wrap  { display:flex; align-items:center; gap:6px; cursor:pointer; }
+    .tog-track {
+      width:48px; height:26px; border-radius:999px;
+      position:relative; transition:background .3s; flex-shrink:0;
+    }
+    .tog-thumb {
+      position:absolute; top:3px; left:3px;
+      width:20px; height:20px; border-radius:50%; background:#fff;
+      transition:transform .3s;
+      display:flex; align-items:center; justify-content:center; font-size:11px;
+    }
+    .tog-thumb.on { transform:translateX(22px); }
+
+    /* ══════════════════════════════════════
+       DARK THEME  (default)
+    ══════════════════════════════════════ */
+    .dark .app-root    { background:#0B1730; color:#f1f5f9; }
+    .dark .header      { background:#000000; color:#ffffff; border-bottom:1px solid #1e293b; }
+    .dark .perf-bar    { background:#111827; color:#9ca3af; border-bottom:1px solid #1f2937; }
+    .dark .chat-area   { background:#0B1730; }
+    .dark .input-wrap  { background:#ffffff; border-top:1px solid #e5e7eb; }
+    .dark .input-box   { background:#f3f4f6; border:1px solid #d1d5db; color:#111827; }
+    .dark .input-count { color:#9ca3af; }
+    .dark .icon-btn    { background:#e5e7eb; color:#374151; }
+    .dark .icon-btn:hover { background:#d1d5db; }
+    .dark .send-btn    { background:#000000; color:#ffffff; }
+    .dark .send-btn:hover { background:#1f2937; }
+
+    .dark .empty-title { color:#d1d5db; }
+    .dark .empty-body  { color:#6b7280; }
+
+    .dark .user-bubble { background:#3b82f6; color:#ffffff; }
+    .dark .bot-bubble  { background:#1e293b; color:#f1f5f9; }
+    .dark .bot-meta    { color:#6b7280; border-top:1px solid #334155; }
+    .dark .copy-btn    { background:#1f2937; color:#6b7280; }
+    .dark .copy-btn:hover { color:#ffffff; }
+    .dark .ts          { color:#4b5563; }
+    .dark .skel        { background:#334155; }
+
+    .dark .hist-area   { background:#0B1730; }
+    .dark .hist-title  { color:#ffffff; }
+    .dark .hist-card   { background:#1e293b; color:#f1f5f9; border:none; }
+    .dark .hist-time   { color:#6b7280; }
+    .dark .hist-empty  { color:#6b7280; }
+
+    .dark .adm-area    { background:#0B1730; }
+    .dark .adm-title   { color:#ffffff; }
+    .dark .adm-card    { background:#1e293b; }
+    .dark .adm-label   { color:#ffffff; }
+    .dark .adm-sub     { color:#9ca3af; }
+    .dark .adm-bar-bg  { background:#374151; }
+    .dark .adm-item    { background:#374151; }
+    .dark .adm-empty   { color:#9ca3af; }
+
+    .dark .nav-active  { background:#2563eb; color:#ffffff; }
+    .dark .nav-idle    { background:#1f2937; color:#ffffff; }
+    .dark .nav-idle:hover { background:#374151; }
+
+    .dark .tog-track   { background:#1e40af; }
+    .dark .tog-label   { color:#9ca3af; }
+
+    /* ══════════════════════════════════════
+       LIGHT THEME
+    ══════════════════════════════════════ */
+    .light .app-root   { background:#f1f5f9; color:#0f172a; }
+    .light .header     { background:#ffffff; color:#0f172a; border-bottom:1px solid #e2e8f0; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .light .perf-bar   { background:#f8fafc; color:#64748b; border-bottom:1px solid #e2e8f0; }
+    .light .chat-area  { background:#f1f5f9; }
+    .light .input-wrap { background:#ffffff; border-top:1px solid #e2e8f0; }
+    .light .input-box  { background:#f8fafc; border:1px solid #e2e8f0; color:#0f172a; }
+    .light .input-count{ color:#94a3b8; }
+    .light .icon-btn   { background:#f1f5f9; color:#475569; }
+    .light .icon-btn:hover { background:#e2e8f0; }
+    .light .send-btn   { background:#0f172a; color:#ffffff; }
+    .light .send-btn:hover { background:#1e293b; }
+
+    .light .empty-title { color:#0f172a; }
+    .light .empty-body  { color:#64748b; }
+
+    .light .user-bubble { background:#3b82f6; color:#ffffff; }
+    .light .bot-bubble  { background:#ffffff; color:#0f172a; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    .light .bot-meta    { color:#94a3b8; border-top:1px solid #e2e8f0; }
+    .light .copy-btn    { background:#f1f5f9; color:#94a3b8; }
+    .light .copy-btn:hover { color:#0f172a; }
+    .light .ts          { color:#94a3b8; }
+    .light .skel        { background:#e2e8f0; }
+
+    .light .hist-area  { background:#f1f5f9; }
+    .light .hist-title { color:#0f172a; }
+    .light .hist-card  { background:#ffffff; color:#0f172a; border:1px solid #e2e8f0; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+    .light .hist-time  { color:#64748b; }
+    .light .hist-empty { color:#64748b; }
+
+    .light .adm-area   { background:#f1f5f9; }
+    .light .adm-title  { color:#0f172a; }
+    .light .adm-card   { background:#ffffff; border:1px solid #e2e8f0; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+    .light .adm-label  { color:#0f172a; }
+    .light .adm-sub    { color:#64748b; }
+    .light .adm-bar-bg { background:#e2e8f0; }
+    .light .adm-item   { background:#f8fafc; }
+    .light .adm-empty  { color:#64748b; }
+
+    .light .nav-active { background:#2563eb; color:#ffffff; }
+    .light .nav-idle   { background:#f1f5f9; color:#374151; border:1px solid #e2e8f0; }
+    .light .nav-idle:hover { background:#e2e8f0; }
+
+    .light .tog-track  { background:#f59e0b; }
+    .light .tog-label  { color:#475569; }
+  </style>
+</head>
+<body style="margin:0;padding:0;">
+<div id="root" style="height:100vh;"></div>
+<script type="text/babel">
+
+/* ── Format answer text → HTML ── */
+function formatAnswer(text) {
+  if (!text) return "";
+  text = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  text = text.replace(/([^\n])(\s+)(\d{1,2})\.\s+/g,(m,p,s,n)=>`${p}\n${n}. `);
+  const lines=text.split("\n"), out=[];
+  let inOl=false, inUl=false;
+  const cOl=()=>{if(inOl){out.push("</ol>");inOl=false;}};
+  const cUl=()=>{if(inUl){out.push("</ul>");inUl=false;}};
+  for(const raw of lines){
+    const l=raw.trimEnd();
+    const om=l.match(/^(\d{1,2})\.\s+(.*)/);
+    if(om){cUl();if(!inOl){out.push("<ol>");inOl=true;}out.push(`<li>${esc(om[2])}</li>`);continue;}
+    const um=l.match(/^[-•]\s+(.*)/);
+    if(um){cOl();if(!inUl){out.push("<ul>");inUl=true;}out.push(`<li>${esc(um[1])}</li>`);continue;}
+    if(!l.trim()){cOl();cUl();out.push("<br/>");continue;}
+    cOl();cUl();out.push(`<p>${esc(l)}</p>`);
+  }
+  cOl();cUl();
+  return out.join("").replace(/(<br\/>){2,}/g,"<br/>");
+}
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmtPct(score){if(!score)return null;return Math.min(parseFloat(score)*100,99.9).toFixed(1)+"%";}
+function fmtTime(d){if(!d)return"";return new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}
+
+/* ════════════════════════════════════════════════════════ */
+function App() {
+  const API_URL = "/api";
+
+  const [dark, setDark] = React.useState(true);
+
+  const [isLoggedIn,      setIsLoggedIn]      = React.useState(false);
+  const [isSignup,        setIsSignup]        = React.useState(false);
+  const [username,        setUsername]        = React.useState("");
+  const [password,        setPassword]        = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+
+  const [messages,   setMessages]   = React.useState([]);
+  const [input,      setInput]      = React.useState("");
+  const [loading,    setLoading]    = React.useState(false);
+  const selectedDB = "faiss";
+
+  const [context,     setContext]     = React.useState([]);
+  const [view,        setView]        = React.useState("chat");
+  const [adminStats,  setAdminStats]  = React.useState(null);
+  const [chatHistory, setChatHistory] = React.useState([]);
+  const [copiedIdx,   setCopiedIdx]   = React.useState(null);
+  const [dbStats,     setDbStats]     = React.useState({faiss:[]});
+
+  const endRef = React.useRef(null);
+  React.useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[messages]);
+
+  const theme = dark ? "dark" : "light";
+
+  function typeMsg(text, onUpdate, onDone) {
+    let i=0;
+    const id=setInterval(()=>{i++;onUpdate(text.slice(0,i));if(i>=text.length){clearInterval(id);onDone();}},16);
+  }
+
+  /* ── Auth ── */
+  async function handleSignup() {
+    if(!username||!password||!confirmPassword) return alert("Please fill all fields");
+    if(password!==confirmPassword) return alert("Passwords do not match");
+    if(password.length<6) return alert("Password must be at least 6 characters");
+    try {
+      const r=await fetch(`${API_URL}/signup`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
+      const d=await r.json();
+      if(r.ok){alert("Signup successful! Please login.");setIsSignup(false);}
+      else alert(d.detail||"Signup failed");
+    } catch{alert("Backend connection failed");}
+  }
+
+  async function handleLogin() {
+    if(!username||!password) return alert("Please enter username and password");
+    try {
+      const r=await fetch(`${API_URL}/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
+      const d=await r.json();
+      if(r.ok) setIsLoggedIn(true);
+      else alert(d.detail||"Login failed");
+    } catch{alert("Backend connection failed");}
+  }
+
+  async function forgotPassword() {
+    const u=prompt("Enter your username");if(!u)return;
+    const p=prompt("Enter new password (min 6 chars)");
+    if(!p||p.length<6) return alert("Password must be at least 6 characters");
+    try {
+      const r=await fetch(`${API_URL}/forgot-password`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,new_password:p})});
+      const d=await r.json();
+      alert(r.ok?d.message:(d.detail||"Failed"));
+    } catch{alert("Backend connection failed");}
+  }
+
+  function logout() {
+    setIsLoggedIn(false);setUsername("");setPassword("");setConfirmPassword("");
+    setMessages([]);setChatHistory([]);setAdminStats(null);setContext([]);setView("chat");
+  }
+
+  /* ── Send message ── */
+  async function sendMessage() {
+    if(!input.trim()||loading) return;
+    const msg=input.trim();
+    setMessages(p=>[...p,{text:msg,sender:"user",time:new Date()}]);
+    setInput(""); setLoading(true);
+    const sid=Date.now();
+    setMessages(p=>[...p,{id:sid,sender:"bot",skeleton:true}]);
+    try {
+      const r=await fetch(`${API_URL}/chat`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({username,password,message:msg,db_type:selectedDB,context:context.slice(-3)}),
+      });
+      const d=await r.json();
+      setMessages(p=>p.filter(m=>m.id!==sid));
+      if(r.ok){
+        setDbStats(p=>({...p,[d.db_used]:[...(p[d.db_used]||[]),parseFloat(d.response_time)]}));
+        const bm={text:"",fullText:d.reply,sender:"bot",score:d.score,db:d.db_used,responseTime:d.response_time,time:new Date(),typing:true};
+        setMessages(p=>[...p,bm]);
+        typeMsg(d.reply,
+          pt=>setMessages(p=>p.map(m=>m.fullText===d.reply&&m.typing?{...m,text:pt}:m)),
+          ()=>{
+            setMessages(p=>p.map(m=>m.fullText===d.reply&&m.typing?{...m,typing:false}:m));
+            setContext(p=>[...p,{user:msg,bot:d.reply}].slice(-3));
+          }
+        );
+      } else {
+        setMessages(p=>[...p,{text:d.detail||"Something went wrong",sender:"bot",time:new Date()}]);
+      }
+    } catch {
+      setMessages(p=>p.filter(m=>m.id!==sid));
+      setMessages(p=>[...p,{text:"Backend connection failed ❌",sender:"bot",time:new Date()}]);
+    }
+    setLoading(false);
+  }
+
+  function copyMsg(text,idx){
+    navigator.clipboard.writeText(text).then(()=>{setCopiedIdx(idx);setTimeout(()=>setCopiedIdx(null),2000);});
+  }
+
+  async function loadHistory(){
+    try{const r=await fetch(`${API_URL}/messages/${username}`);setChatHistory(await r.json());}
+    catch{alert("Failed to load history");}
+  }
+  async function loadAdmin(){
+    try{const r=await fetch(`${API_URL}/admin/stats`);setAdminStats(await r.json());}
+    catch{alert("Failed to load stats");}
+  }
+
+  function exportChat(){
+    const txt=messages.filter(m=>!m.skeleton).map(m=>`[${m.sender.toUpperCase()}] ${m.text}`).join("\n\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));
+    a.download=`chat_${username}_${Date.now()}.txt`;a.click();
+  }
+
+  function avgTime(db){
+    const a=dbStats[db]||[];if(!a.length)return"—";
+    return(a.reduce((x,y)=>x+y,0)/a.length).toFixed(3)+"s";
+  }
+
+  /* ════════════════════════════════
+     AUTH SCREEN — always dark gradient
+  ════════════════════════════════ */
+  if(!isLoggedIn){
+    return(
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#000 0%,#1f2937 50%,#374151 100%)",padding:"16px"}}>
+        <div style={{background:"#fff",width:"100%",maxWidth:"440px",borderRadius:"24px",boxShadow:"0 25px 60px rgba(0,0,0,.4)",padding:"40px"}}>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:"24px"}}>
+            <div style={{width:"96px",height:"96px",borderRadius:"50%",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"48px"}}>🤖</div>
+          </div>
+          <h1 style={{textAlign:"center",fontSize:"28px",fontWeight:"700",marginBottom:"8px",color:"#000"}}>{isSignup?"Create Account":"Welcome Back"}</h1>
+          <p style={{textAlign:"center",color:"#6b7280",marginBottom:"32px"}}>{isSignup?"Signup to continue":"Login to continue"}</p>
+
+          <input type="text" placeholder="Username" value={username} onChange={e=>setUsername(e.target.value)}
+            style={{width:"100%",padding:"16px",marginBottom:"12px",borderRadius:"16px",background:"#f3f4f6",border:"1px solid #e5e7eb",outline:"none",fontSize:"15px",boxSizing:"border-box"}}/>
+          <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)}
+            style={{width:"100%",padding:"16px",marginBottom:"12px",borderRadius:"16px",background:"#f3f4f6",border:"1px solid #e5e7eb",outline:"none",fontSize:"15px",boxSizing:"border-box"}}/>
+          {isSignup&&(
+            <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)}
+              style={{width:"100%",padding:"16px",marginBottom:"12px",borderRadius:"16px",background:"#f3f4f6",border:"1px solid #e5e7eb",outline:"none",fontSize:"15px",boxSizing:"border-box"}}/>
+          )}
+          {!isSignup&&(
+            <div style={{textAlign:"right",marginBottom:"20px"}}>
+              <button onClick={forgotPassword} style={{color:"#3b82f6",background:"none",border:"none",cursor:"pointer",fontSize:"14px"}}>Forgot Password?</button>
+            </div>
+          )}
+          <button onClick={isSignup?handleSignup:handleLogin}
+            style={{width:"100%",background:"#000",color:"#fff",padding:"16px",borderRadius:"16px",fontSize:"16px",fontWeight:"600",border:"none",cursor:"pointer"}}>
+            {isSignup?"Sign Up":"Login"}
+          </button>
+          <p style={{textAlign:"center",color:"#6b7280",marginTop:"24px",fontSize:"14px"}}>
+            {isSignup?"Already have an account? ":"Don't have an account? "}
+            <span onClick={()=>setIsSignup(!isSignup)} style={{color:"#000",fontWeight:"600",cursor:"pointer"}}>
+              {isSignup?"Login":"Sign Up"}
+            </span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════
+     MAIN APP — full themed
+  ════════════════════════════════ */
+  return (
+    <div className={theme} style={{height:"100vh",display:"flex",flexDirection:"column"}}>
+      <div className="app-root" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+
+        {/* ── HEADER ── */}
+        <div className="header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 24px",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:"16px"}}>
+            <span style={{fontSize:"22px",fontWeight:"700"}}>🤖 AI Chat</span>
+            <span style={{fontSize:"13px",opacity:.6}}>as: <strong>{username}</strong></span>
+            {context.length>0&&(
+              <span style={{fontSize:"11px",background:"#14532d",color:"#86efac",padding:"3px 10px",borderRadius:"8px"}}>
+                🧠 Memory: {context.length}
+              </span>
+            )}
+          </div>
+
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+
+            {/* ── THEME TOGGLE ── */}
+            <div className="tog-wrap" onClick={()=>setDark(!dark)}>
+              <span className="tog-label" style={{fontSize:"14px"}}>{dark?"🌙":"☀️"}</span>
+              <div className="tog-track">
+                <div className={`tog-thumb ${dark?"on":""}`}>{dark?"🌙":"☀️"}</div>
+              </div>
+            </div>
+
+            <span style={{background:"#14532d",color:"#86efac",padding:"6px 14px",borderRadius:"12px",fontSize:"13px",fontWeight:"600"}}>⚡ FAISS</span>
+
+            {["chat","history","admin"].map(v=>(
+              <button key={v}
+                onClick={()=>{setView(v);if(v==="history")loadHistory();if(v==="admin")loadAdmin();}}
+                className={`${view===v?"nav-active":"nav-idle"}`}
+                style={{padding:"8px 16px",borderRadius:"12px",fontSize:"13px",fontWeight:"600",border:"none",cursor:"pointer"}}>
+                {v==="chat"?"💬 Chat":v==="history"?"📜 History":"📊 Admin"}
+              </button>
+            ))}
+
+            <button onClick={logout}
+              style={{background:"#ef4444",color:"#fff",padding:"8px 16px",borderRadius:"12px",fontSize:"13px",fontWeight:"600",border:"none",cursor:"pointer"}}>
+              Logout
+            </button>
+          </div>
+        </div>
+
+        {/* ── PERF BAR ── */}
+        <div className="perf-bar" style={{padding:"6px 24px",fontSize:"12px",display:"flex",gap:"24px",flexShrink:0}}>
+          <span>⚡ FAISS avg: <strong style={{color:"#4ade80"}}>{avgTime("faiss")}</strong></span>
+          <span style={{marginLeft:"auto"}}>AI · Cybersecurity · CVE · MITRE ATT&amp;CK · 69,000+ Q&amp;A pairs · conversation memory enabled</span>
+        </div>
+
+        {/* ════ CHAT ════ */}
+        {view==="chat"&&(
+          <>
+            <div className="chat-area" style={{flex:1,overflowY:"auto",padding:"24px 32px",display:"flex",flexDirection:"column",gap:"16px"}}>
+              {messages.length===0&&(
+                <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                  <div style={{fontSize:"64px",marginBottom:"16px"}}>🤖</div>
+                  <div className="empty-title" style={{fontSize:"24px",fontWeight:"700",marginBottom:"8px"}}>Ask me anything!</div>
+                  <div className="empty-body" style={{fontSize:"14px"}}>
+                    AI · Cybersecurity · CVE · MITRE ATT&amp;CK · Powered by ⚡ FAISS
+                    <br/><span style={{color:"#4ade80"}}>🧠 Conversation memory enabled!</span>
+                  </div>
+                </div>
+              )}
+
+              {messages.map((msg,idx)=>(
+                <div key={idx} style={{display:"flex",justifyContent:msg.sender==="user"?"flex-end":"flex-start"}}>
+                  {msg.skeleton?(
+                    <div className="skel" style={{width:"240px",padding:"16px 24px",borderRadius:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
+                      <div className="skel" style={{height:"14px",width:"100%",borderRadius:"6px"}}></div>
+                      <div className="skel" style={{height:"14px",width:"75%",borderRadius:"6px"}}></div>
+                      <div className="skel" style={{height:"10px",width:"50%",borderRadius:"6px"}}></div>
+                    </div>
+                  ):(
+                    <div style={{maxWidth:"70%",position:"relative"}} className="group">
+                      <div className={msg.sender==="user"?"user-bubble":"bot-bubble"}
+                        style={{padding:"14px 20px",borderRadius:"24px",fontSize:"15px",boxShadow:"0 1px 4px rgba(0,0,0,.1)"}}>
+                        {msg.sender==="bot"?(
+                          msg.typing
+                            ?<span style={{whiteSpace:"pre-wrap"}}>{msg.text}<span className="cursor"></span></span>
+                            :<div className="bot-answer" dangerouslySetInnerHTML={{__html:formatAnswer(msg.text)}}/>
+                        ):(
+                          <span style={{whiteSpace:"pre-wrap"}}>{msg.text}</span>
+                        )}
+
+                        {msg.sender==="bot"&&!msg.typing&&msg.db&&(
+                          <div className="bot-meta" style={{fontSize:"11px",marginTop:"10px",paddingTop:"8px",display:"flex",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
+                            <span>DB: <strong>{msg.db?.toUpperCase()}</strong></span>
+                            {msg.score&&<span>confidence: <strong>{fmtPct(msg.score)}</strong></span>}
+                            {msg.responseTime&&<span>⏱ {msg.responseTime}s</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{display:"flex",alignItems:"center",gap:"8px",marginTop:"4px",justifyContent:msg.sender==="user"?"flex-end":"flex-start"}}>
+                        <span className="ts" style={{fontSize:"11px"}}>{fmtTime(msg.time)}</span>
+                        {msg.sender==="bot"&&!msg.skeleton&&!msg.typing&&(
+                          <button onClick={()=>copyMsg(msg.text,idx)} className="copy-btn"
+                            style={{fontSize:"11px",padding:"3px 8px",borderRadius:"8px",border:"none",cursor:"pointer",opacity:0.7}}>
+                            {copiedIdx===idx?"✅ Copied":"📋 Copy"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={endRef}></div>
+            </div>
+
+            {/* ── INPUT BAR ── */}
+            <div className="input-wrap" style={{padding:"14px 24px",flexShrink:0}}>
+              <div style={{display:"flex",gap:"10px",alignItems:"center"}}>
+                <div style={{flex:1,position:"relative"}}>
+                  <input type="text" placeholder="Type your message..."
+                    value={input} onChange={e=>setInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==="Enter")sendMessage();}}
+                    maxLength={1000}
+                    className="input-box"
+                    style={{width:"100%",padding:"14px 56px 14px 20px",borderRadius:"18px",fontSize:"15px",outline:"none",boxSizing:"border-box"}}/>
+                  <span className="input-count" style={{position:"absolute",right:"14px",top:"50%",transform:"translateY(-50%)",fontSize:"11px"}}>
+                    {input.length}/1000
+                  </span>
+                </div>
+                <button onClick={exportChat} title="Export" className="icon-btn"
+                  style={{padding:"14px 16px",borderRadius:"18px",fontSize:"18px",border:"none",cursor:"pointer"}}>💾</button>
+                <button onClick={()=>{setMessages([]);setContext([]);}} title="Clear" className="icon-btn"
+                  style={{padding:"14px 16px",borderRadius:"18px",fontSize:"18px",border:"none",cursor:"pointer"}}>🗑️</button>
+                <button onClick={sendMessage} disabled={loading} className="send-btn"
+                  style={{padding:"14px 28px",borderRadius:"18px",fontSize:"15px",fontWeight:"600",border:"none",cursor:"pointer",opacity:loading?.5:1}}>
+                  {loading?"...":"Send"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ════ HISTORY ════ */}
+        {view==="history"&&(
+          <div className="hist-area" style={{flex:1,overflowY:"auto",padding:"24px 32px"}}>
+            <h2 className="hist-title" style={{fontSize:"22px",fontWeight:"700",marginBottom:"20px"}}>📜 Chat History</h2>
+            {chatHistory.length===0?(
+              <div className="hist-empty" style={{textAlign:"center",marginTop:"80px"}}>No messages yet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
+                {chatHistory.map((msg,idx)=>(
+                  <div key={idx} className="hist-card" style={{borderRadius:"18px",padding:"18px"}}>
+                    <div className="hist-time" style={{display:"flex",justifyContent:"space-between",fontSize:"11px",marginBottom:"10px"}}>
+                      <span>🕐 {new Date(msg.created_at).toLocaleString()}</span>
+                      <span>DB: <strong>{msg.db_used?.toUpperCase()}</strong> · {msg.score?fmtPct(msg.score):"—"} · ⏱ {msg.response_time||"—"}s</span>
+                    </div>
+                    <div style={{marginBottom:"10px"}}>
+                      <span style={{color:"#60a5fa",fontWeight:"600"}}>You: </span>
+                      <span>{msg.user_message}</span>
+                    </div>
+                    <div>
+                      <span style={{color:"#4ade80",fontWeight:"600"}}>Bot: </span>
+                      <div className="bot-answer" style={{marginTop:"4px",marginLeft:"4px"}}
+                        dangerouslySetInnerHTML={{__html:formatAnswer(msg.bot_response)}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ════ ADMIN ════ */}
+        {view==="admin"&&(
+          <div className="adm-area" style={{flex:1,overflowY:"auto",padding:"24px 32px"}}>
+            <h2 className="adm-title" style={{fontSize:"22px",fontWeight:"700",marginBottom:"20px"}}>📊 Admin Dashboard</h2>
+            {!adminStats?(
+              <div className="adm-sub">Loading stats...</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:"20px"}}>
+
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+                  <div style={{background:"#1e3a8a",borderRadius:"18px",padding:"24px",textAlign:"center"}}>
+                    <div style={{fontSize:"48px",fontWeight:"700",color:"#fff"}}>{adminStats.total_users}</div>
+                    <div style={{color:"#93c5fd",marginTop:"6px"}}>Total Users</div>
+                  </div>
+                  <div style={{background:"#14532d",borderRadius:"18px",padding:"24px",textAlign:"center"}}>
+                    <div style={{fontSize:"48px",fontWeight:"700",color:"#fff"}}>{adminStats.total_messages}</div>
+                    <div style={{color:"#86efac",marginTop:"6px"}}>Total Messages</div>
+                  </div>
+                </div>
+
+                <div className="adm-card" style={{borderRadius:"18px",padding:"20px"}}>
+                  <h3 className="adm-label" style={{fontWeight:"700",fontSize:"16px",marginBottom:"16px"}}>Vector DB Usage</h3>
+                  {["faiss"].map(db=>{
+                    const c=adminStats.db_usage[db]||0, t=adminStats.total_messages||1, p=Math.round((c/t)*100);
+                    return(
+                      <div key={db} style={{marginBottom:"12px"}}>
+                        <div className="adm-sub" style={{display:"flex",justifyContent:"space-between",fontSize:"13px",marginBottom:"4px"}}>
+                          <span className="adm-label">{db.toUpperCase()}</span>
+                          <span>{c} messages ({p}%)</span>
+                        </div>
+                        <div className="adm-bar-bg" style={{width:"100%",borderRadius:"999px",height:"10px"}}>
+                          <div style={{background:"#22c55e",height:"10px",borderRadius:"999px",width:`${p}%`}}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="adm-card" style={{borderRadius:"18px",padding:"20px"}}>
+                  <h3 className="adm-label" style={{fontWeight:"700",fontSize:"16px",marginBottom:"16px"}}>⏱ Avg Response Time</h3>
+                  <div className="adm-item" style={{borderRadius:"14px",padding:"20px",textAlign:"center",maxWidth:"200px"}}>
+                    <div style={{fontSize:"28px",fontWeight:"700",color:"#4ade80"}}>
+                      {adminStats.avg_response_time["faiss"]?adminStats.avg_response_time["faiss"]+"s":"—"}
+                    </div>
+                    <div className="adm-sub" style={{fontSize:"13px",marginTop:"4px"}}>⚡ FAISS</div>
+                  </div>
+                </div>
+
+                <div className="adm-card" style={{borderRadius:"18px",padding:"20px"}}>
+                  <h3 className="adm-label" style={{fontWeight:"700",fontSize:"16px",marginBottom:"16px"}}>🔥 Top 5 Most Asked</h3>
+                  {adminStats.top_questions.length===0?(
+                    <div className="adm-empty">No data yet.</div>
+                  ):adminStats.top_questions.map((q,i)=>(
+                    <div key={i} className="adm-item"
+                      style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderRadius:"12px",padding:"12px 16px",marginBottom:"8px"}}>
+                      <span className="adm-label" style={{fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,marginRight:"12px"}}>{q.question}</span>
+                      <span style={{color:"#facc15",fontWeight:"700"}}>{q.count}x</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={loadAdmin}
+                  style={{background:"#2563eb",color:"#fff",padding:"14px",borderRadius:"18px",fontWeight:"600",border:"none",cursor:"pointer",width:"100%"}}>
+                  🔄 Refresh Stats
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
