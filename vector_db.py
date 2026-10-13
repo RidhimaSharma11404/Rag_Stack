@@ -71,7 +71,7 @@ CUSTOM_CSV       = os.path.join(BASE_DIR, "custom_cyber.csv")
 VULN_CHAT_DATASET_CSV   = os.path.join(BASE_DIR, "vulnerabilities_chatbot_dataset_Chatbot_Dataset.csv")
 VULN_CHAT_INDEX_CSV     = os.path.join(BASE_DIR, "vulnerabilities_chatbot_dataset_Vulnerability_Index.csv")
 VULN_DEF_QA_CSV         = os.path.join(BASE_DIR, "vulnerability_definitions_Chatbot_QA_-_Definitions.csv")
-# ✅ FIX 1: Corrected filename typo ("Vulnerations" → "Definitions")
+# FIX 1: Corrected filename typo ("Vulnerations" → "Definitions")
 VULN_DEF_DEFINITIONS_CSV = os.path.join(BASE_DIR, "vulnerability_definitions_Vulnerability_Definitions.csv")
 
 CVE_REPO         = os.path.join(BASE_DIR, "cvelistV5-main", "cvelistV5-main")
@@ -119,7 +119,7 @@ FAISS_SIM_FLOOR = 0.15
 CYBER_MARGIN    = 0.18
 
 # ── Validation: answer must contain ≥1 of these per-source signals ──
-# ✅ FIX 3 & 4: Expanded vuln_chat and vuln_def signals to cover
+# FIX 3 & 4: Expanded vuln_chat and vuln_def signals to cover
 #    mitigation-specific vocabulary (sanitize, parameterize, etc.)
 _ANSWER_SIGNALS = {
     "cve":       re.compile(
@@ -135,7 +135,7 @@ _ANSWER_SIGNALS = {
     "custom":    re.compile(
         r"\b(security|attack|malware|threat|encrypt|firewall|"
         r"intrusion|phish|ransomware|vulnerability|exploit)\b", re.I),
-    # ✅ Expanded: added sanitize, parameterize, prepared, validate, input,
+    # Expanded: added sanitize, parameterize, prepared, validate, input,
     #    injection, mitigation, prevent, remediat, update, patch, configure
     "vuln_def":  re.compile(
         r"\b(vulnerability|security|attack|authentication|application|"
@@ -143,7 +143,7 @@ _ANSWER_SIGNALS = {
         r"sanitize|parameteriz|prepared|statement|validate|input|"
         r"mitigation|prevent|remediat|patch|update|configure|"
         r"encrypt|firewall|control|threat|risk|defense|protect)\b", re.I),
-    # ✅ Expanded: same broad mitigation vocabulary
+    # Expanded: same broad mitigation vocabulary
     "vuln_chat": re.compile(
         r"\b(vulnerability|security|attack|mitigation|implement|"
         r"authentication|protect|prevent|weak|exploit|"
@@ -665,7 +665,7 @@ def _load_all():
     q, a       = _load_conversation();   add(q, a, "conv")
     q, a       = _load_ai_qa();          add(q, a, "ai")
 
-    # ✅ FIX 2: Priority-based deduplication — highest priority source wins
+    # FIX 2: Priority-based deduplication — highest priority source wins
     # vuln_def (6) and vuln_chat (7) beat cve (4), cyber (2), etc.
     seen: dict[str, tuple] = {}
     for q, a, d, s in zip(all_q, all_a, all_d, all_s):
@@ -1095,7 +1095,7 @@ def _fuse(kw_hits: list[dict], sem_hits: list[dict], query: str = "") -> list[di
     for doc in pool.values():
         src = doc["source"]
 
-        # ✅ FIX 5: Compute boost based on both mitigation and definitional intent
+        # FIX 5: Compute boost based on both mitigation and definitional intent
         if mitigation:
             if src in ("vuln_chat", "vuln_def"):
                 boost = 1.80    # Strong boost — these datasets ARE mitigation Q&A
